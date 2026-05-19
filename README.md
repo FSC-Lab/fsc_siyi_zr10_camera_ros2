@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SIYI ZR10 Camera ROS2
 
 ROS2 Humble package for the SIYI ZR10 gimbal camera. Publishes video from the RTSP stream and provides gimbal control over UDP.
@@ -13,11 +14,13 @@ ROS2 Humble package for the SIYI ZR10 gimbal camera. Publishes video from the RT
 
 ```bash
 cd ~/zr10_camera_control
+
 source /opt/ros/humble/setup.bash
 colcon build --packages-select zr10_camera
 source install/setup.bash
 ```
 
+<<<<<<< HEAD
 ## Launch
 
 ### Full stack (video + gimbal + system stats)
