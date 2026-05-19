@@ -99,8 +99,8 @@ class ZR10Publisher(Node):
 
     def destroy_node(self):
         self.running = False
-        if hasattr(self, 'thread'):
-            self.thread.join(timeout=2.0)
+        # Don't join — thread may be blocked inside cv2.VideoCapture() for up to 8s.
+        # It's a daemon thread and will exit with the process.
         if self.cap is not None:
             self.cap.release()
         super().destroy_node()

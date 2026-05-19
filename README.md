@@ -9,6 +9,28 @@ ROS2 Humble package for the SIYI ZR10 gimbal camera. Publishes video from the RT
 - `python3-psutil` (for system stats node)
 - Camera connected at `192.168.144.25` (dedicated network link)
 
+## Network setup (required before first launch)
+
+> **Do this once per machine.** The camera is at `192.168.144.25` on a dedicated Ethernet link. The host interface on that cable must have a static IP on the same subnet, and it must be set permanently — a temporary assignment is lost every time the cable is unplugged or the machine reboots.
+
+```bash
+# Find the interface connected to the camera cable
+ip link show
+
+# Set a permanent static IP via NetworkManager (replace eno1 with your interface)
+nmcli con add type ethernet ifname eno1 ip4 192.168.144.10/24
+nmcli con up ethernet-eno1
+
+# Verify
+ping 192.168.144.25
+```
+
+If ping fails after plugging in the cable, check that NetworkManager applied the profile:
+```bash
+ip addr show eno1 | grep 192.168.144
+```
+If the IP is missing, run `nmcli con up ethernet-eno1` again.
+
 ## Build
 
 ```bash
@@ -25,13 +47,17 @@ source install/setup.bash
 ### Full stack (video + gimbal + system stats)
 
 ```bash
-ros2 launch zr10_camera zr10_stream.launch.py
+# Jetson Orin/AGX/NX
+ros2 launch zr10_camera zr10_stream_jetson.launch.py
+
+# x86 laptop / desktop
+ros2 launch zr10_camera zr10_stream_laptop.launch.py
 ```
 
-Optional overrides:
+Optional overrides (same for both):
 
 ```bash
-ros2 launch zr10_camera zr10_stream.launch.py \
+ros2 launch zr10_camera zr10_stream_laptop.launch.py \
   rtsp_url:=rtsp://192.168.144.25:8554/main.264 \
   fps:=15.0 \
   jpeg_quality:=80
