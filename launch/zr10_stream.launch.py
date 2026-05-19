@@ -15,6 +15,9 @@ def generate_launch_description():
         DeclareLaunchArgument('jpeg_quality',
             default_value='80',
             description='JPEG compression quality 1-100'),
+        DeclareLaunchArgument('decoder',
+            default_value='software',
+            description='GStreamer decoder: jetson | nvdec | software'),
 
         # Compressed video publisher
         Node(
@@ -26,6 +29,7 @@ def generate_launch_description():
                 'rtsp_url':     LaunchConfiguration('rtsp_url'),
                 'fps':          LaunchConfiguration('fps'),
                 'jpeg_quality': LaunchConfiguration('jpeg_quality'),
+                'decoder':      LaunchConfiguration('decoder'),
             }]
         ),
 
