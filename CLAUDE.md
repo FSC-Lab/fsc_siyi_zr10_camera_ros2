@@ -15,8 +15,9 @@ colcon build --packages-select zr10_camera
 # Source the overlay after building
 source install/setup.bash
 
-# Launch the full stack (RTSP stream + gimbal control + system stats)
-ros2 launch zr10_camera zr10_stream.launch.py
+# Launch the full stack — pick the right file for the platform
+ros2 launch zr10_camera zr10_stream_jetson.launch.py   # Jetson Orin/AGX/NX
+ros2 launch zr10_camera zr10_stream_laptop.launch.py   # x86 laptop/desktop
 
 # Optional: also publish raw Image topic (low-rate, CPU-heavy — run in a second terminal)
 ros2 launch zr10_camera zr10_raw.launch.py
@@ -117,31 +118,32 @@ All sends are synchronous (blocking `recvfrom` with 0.5 s timeout). On shutdown 
 
 Work through these in order before launching.
 
-### 1. Network — assign a static IP on the camera's subnet
+### 1. Network — permanently assign a static IP on the camera's subnet
 
-The camera lives at `192.168.144.25` on a dedicated Ethernet link. The host interface on that cable must be on the same `/24`.
+> **Use `nmcli`, not `ip addr add`.** A temporary `ip addr add` is wiped every time the cable is unplugged or the machine reboots, causing the RTSP stream to silently fail on the next run. The `nmcli` profile is reapplied automatically whenever the cable is connected.
 
 ```bash
-# Find which interface is connected to the camera (look for the one that just got a cable)
+# Find which interface is connected to the camera cable
 ip link show
 
-# Assign a static IP (replace eno1 with your actual interface name)
-sudo ip addr add 192.168.144.10/24 dev eno1
+# Create a permanent profile (replace eno1 with your actual interface name)
+nmcli con add type ethernet ifname eno1 ip4 192.168.144.10/24
+nmcli con up ethernet-eno1
 
 # Verify — expect <1 ms RTT
 ping 192.168.144.25
 ```
 
-Common failure modes:
-- `ping` returns `Destination Host Unreachable` — your machine has no interface on `192.168.144.x`. Run the `ip addr add` command above.
-- `ping` returns `100% packet loss` with no error — wrong interface name, or cable not plugged in.
-- `Cannot find device "eth0"` — interface is named `eno1`, `enp3s0`, etc. Use `ip link show` to find the right name.
+To check whether the IP is currently active (e.g. after a reboot or replug):
+```bash
+ip addr show eno1 | grep 192.168.144
+```
+If the line is missing, run `nmcli con up ethernet-eno1` to reactivate the profile.
 
-> This IP assignment is lost on reboot. To make it persistent use NetworkManager:
-> ```bash
-> nmcli con add type ethernet ifname eno1 ip4 192.168.144.10/24
-> nmcli con up ethernet-eno1
-> ```
+Common failure modes:
+- `ping` returns `Destination Host Unreachable` — IP not assigned. Run `nmcli con up ethernet-eno1`.
+- `ping` returns `100% packet loss` — wrong interface name, or cable not plugged in.
+- `Cannot find device "eth0"` — interface is named `eno1`, `enp3s0`, etc. Use `ip link show` to find the right name.
 
 ### 2. GStreamer decoder — pick the right one for this platform
 
