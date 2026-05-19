@@ -16,7 +16,7 @@ def generate_launch_description():
             default_value='80',
             description='JPEG compression quality 1-100'),
         DeclareLaunchArgument('decoder',
-            default_value='software',
+            default_value='jetson',
             description='GStreamer decoder: jetson | nvdec | software'),
 
         # Compressed video publisher

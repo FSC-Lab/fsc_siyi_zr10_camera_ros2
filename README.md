@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # SIYI ZR10 Camera ROS2
 
 ROS2 Humble package for the SIYI ZR10 gimbal camera. Publishes video from the RTSP stream and provides gimbal control over UDP.

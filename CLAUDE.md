@@ -113,6 +113,48 @@ All sends are synchronous (blocking `recvfrom` with 0.5 s timeout). On shutdown 
 
 ---
 
+## Platform differences: Jetson Orin vs x86 laptop
+
+> **Always identify the target platform first.** Several settings differ between Jetson and x86, and using the wrong ones produces silent or misleading failures.
+
+| Item | Jetson Orin | x86 Laptop |
+|------|-------------|------------|
+| `decoder` launch arg | `jetson` | `software` (or `nvdec` with NVIDIA GPU) |
+| H.265 decoder plugin | `nvv4l2decoder` + `nvvidconv` (JetPack built-in) | `avdec_h265` (requires `gstreamer1.0-libav`) |
+| `h265parse` plugin | requires `gstreamer1.0-plugins-bad` (not pre-installed on Jetson minimal) | usually pre-installed via desktop deps |
+| `python3-opencv` source | install from ROS apt (`ros-humble-cv-bridge` pulls it in with GStreamer) | `pip` build lacks GStreamer — must use system package |
+| Ethernet interface | `eno1` (Jetson Orin default) | varies (`enp3s0`, `eth0`, etc.) |
+| WiFi interface | `wlP1p1s0` (Jetson Orin default) | varies (`wlo1`, `wlan0`, etc.) |
+| Static IP persistence | use `nmcli` or edit `/etc/network/interfaces` | same, or use NetworkManager GUI |
+| Build workspace path | `/home/drone/zr10_camera_workspace` | may differ |
+
+### Root causes of the three failures seen on first Jetson bringup
+
+1. **`eno1` had no IP on `192.168.144.x/24`** — camera unreachable. Static IP is lost on reboot; make it permanent with `nmcli`.
+2. **`decoder` defaulted to `software`** — `avdec_h265` is not installed on Jetson. The launch file default was left from a laptop adaptation. Fixed: default is now `jetson`.
+3. **`gstreamer1.0-plugins-bad` not installed** — `h265parse` was missing, causing the pipeline to fail at link time. The reported error (`udpsrc: Internal data stream error`) is a misleading OpenCV symptom; the real fix is `sudo apt install gstreamer1.0-plugins-bad`.
+
+### Quick platform check script
+
+Run this on any new machine before first launch:
+
+```bash
+echo "=== Decoders ===" && \
+  gst-inspect-1.0 nvv4l2decoder 2>/dev/null && echo "jetson OK" || echo "jetson N/A" && \
+  gst-inspect-1.0 avdec_h265    2>/dev/null && echo "software OK" || echo "software N/A"
+
+echo "=== h265parse ===" && \
+  gst-inspect-1.0 h265parse 2>/dev/null && echo "OK" || echo "MISSING — sudo apt install gstreamer1.0-plugins-bad"
+
+echo "=== OpenCV GStreamer ===" && \
+  python3 -c "import cv2; info=cv2.getBuildInformation(); print('YES' if 'GStreamer:                   YES' in info else 'NO')"
+
+echo "=== Camera reachable ===" && \
+  ping -c 1 -W 1 192.168.144.25 && echo "OK" || echo "UNREACHABLE — assign IP: sudo ip addr add 192.168.144.10/24 dev eno1"
+```
+
+---
+
 ## New device checklist
 
 Work through these in order before launching.
